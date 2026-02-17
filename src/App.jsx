@@ -23,8 +23,60 @@ function App() {
       setSession(session)
     })
 
-    return () => subscription.unsubscribe()
+    // Request Notification Permissions
+    if ("Notification" in window) {
+      Notification.requestPermission().then(permission => {
+        console.log("Notification permission:", permission)
+      })
+    }
+
+    // Background Reminder Check
+    const reminderInterval = setInterval(checkReminders, 60000)
+
+    return () => {
+      subscription.unsubscribe()
+      clearInterval(reminderInterval)
+    }
   }, [])
+
+  const checkReminders = async () => {
+    if (!session) return
+
+    const { data: meds } = await supabase
+      .from('medications')
+      .select('*')
+
+    if (!meds) return
+
+    const now = new Date()
+    const currentHourMin = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })
+
+    for (const med of meds) {
+      const medTime = med.time.substring(0, 5) // HH:mm
+      if (medTime === currentHourMin) {
+        // Check if already taken today
+        const today = now.toISOString().split('T')[0]
+        const { data: logs } = await supabase
+          .from('medication_logs')
+          .select('*')
+          .eq('medication_id', med.id)
+          .gte('taken_at', `${today}T00:00:00`)
+
+        if (logs && logs.length === 0) {
+          sendNotification(med.name)
+        }
+      }
+    }
+  }
+
+  const sendNotification = (medName) => {
+    if (Notification.permission === "granted") {
+      new Notification("¡Hora de tu medicina!", {
+        body: `Es momento de tomar: ${medName}`,
+        icon: "/vite.svg" // Replace with app icon if available
+      })
+    }
+  }
 
   if (loading) {
     return (

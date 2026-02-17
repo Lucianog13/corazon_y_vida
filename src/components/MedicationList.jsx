@@ -9,9 +9,14 @@ export default function MedicationList() {
     const [loading, setLoading] = useState(true)
     const [showAdd, setShowAdd] = useState(false)
     const [showScanner, setShowScanner] = useState(false)
+    const [missedMeds, setMissedMeds] = useState([])
 
     useEffect(() => {
         fetchMedications()
+
+        // Interval to check for missed meds every minute
+        const interval = setInterval(checkMissedMeds, 60000)
+        return () => clearInterval(interval)
     }, [])
 
     const fetchMedications = async () => {
@@ -35,8 +40,33 @@ export default function MedicationList() {
                 }
             })
             setMedications(processedMeds)
+            // Initial check
+            calculateMissed(processedMeds)
         }
         setLoading(false)
+    }
+
+    const calculateMissed = (meds) => {
+        const now = new Date()
+        const todayStr = now.toISOString().split('T')[0]
+
+        const missed = meds.filter(m => {
+            if (m.taken) return false
+
+            // Create a Date object for the scheduled time
+            const [hours, minutes] = m.time.split(':')
+            const scheudledDate = new Date(`${todayStr}T${hours}:${minutes}:00`)
+
+            // It's missed if more than 30 minutes passed
+            const thirtyMinsInMs = 30 * 60 * 1000
+            return (now.getTime() - scheudledDate.getTime()) > thirtyMinsInMs
+        })
+
+        setMissedMeds(missed)
+    }
+
+    const checkMissedMeds = () => {
+        calculateMissed(medications)
     }
 
     const toggleTaken = async (medId) => {
@@ -65,6 +95,7 @@ export default function MedicationList() {
             {showAdd && <AddMedication onSave={fetchMedications} onClose={() => setShowAdd(false)} />}
             {showScanner && <MedicationScanner onSave={fetchMedications} onClose={() => setShowScanner(false)} />}
 
+            {/* Header */}
             <div className="flex justify-between items-center py-4">
                 <div className="text-left">
                     <p className="text-blue-400 font-bold tracking-widest text-sm mb-1 uppercase">Hoy es</p>
@@ -87,6 +118,17 @@ export default function MedicationList() {
                     </button>
                 </div>
             </div>
+
+            {/* Missed Meds Warning */}
+            {missedMeds.length > 0 && (
+                <div className="bg-red-600 border-4 border-white/20 rounded-[2rem] p-6 shadow-xl shadow-red-600/20 animate-bounce">
+                    <p className="text-white font-black text-xs uppercase tracking-widest mb-1">¡Atención!</p>
+                    <h3 className="text-2xl font-black text-white leading-tight">
+                        No has tomado: {missedMeds.map(m => m.name).join(', ')}
+                    </h3>
+                    <p className="text-red-100 font-bold mt-1 italic">Tómalas pronto para no perder tu tratamiento.</p>
+                </div>
+            )}
 
             {/* Quick Scanner Action Callout */}
             <button

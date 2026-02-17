@@ -64,16 +64,6 @@ export default function MedicationScanner({ onSave, onClose }) {
             const ctx = canvas.getContext('2d')
             ctx.drawImage(video, 0, 0)
 
-            // Step A: Classification (Is it a medicine?)
-            if (modelRef.current) {
-                const prediction = await modelRef.current.predict(canvas)
-                const isMedicine = prediction.find(p => p.className === "Medicamento" && p.probability > 0.6)
-                if (!isMedicine) {
-                    // We'll warn but allow proceeding for now to be helpful
-                    console.log("Classification suggest not a medicine")
-                }
-            }
-
             // Step B: Identification (OCR)
             const { data: { text } } = await Tesseract.recognize(canvas, 'spa')
 
@@ -177,14 +167,22 @@ export default function MedicationScanner({ onSave, onClose }) {
                     </button>
                 </div>
             ) : (
-                <div className="space-y-8 animate-in fade-in zoom-in duration-300">
+                <div className="space-y-8 animate-in fade-in zoom-in duration-300 pb-12">
                     <div className="bg-emerald-500/10 border-4 border-emerald-500 rounded-[3rem] p-8 text-center">
                         <div className="bg-emerald-500 p-4 rounded-full w-20 h-20 mx-auto mb-4 flex items-center justify-center">
                             <Check className="w-12 h-12 text-slate-950 stroke-[3]" />
                         </div>
                         <p className="text-emerald-500 font-black text-sm uppercase tracking-widest mb-2">Medicina Identificada</p>
-                        <h3 className="text-5xl font-black leading-tight mb-4">{result?.name}</h3>
-                        <p className="text-slate-400 font-medium">¿Es correcto este nombre?</p>
+
+                        <div className="space-y-2">
+                            <input
+                                type="text"
+                                value={result?.name}
+                                onChange={(e) => setResult({ ...result, name: e.target.value.toUpperCase() })}
+                                className="w-full bg-slate-900 border-2 border-emerald-500/30 rounded-2xl p-4 text-4xl font-black text-center focus:border-emerald-500 transition-colors uppercase outline-none"
+                            />
+                            <p className="text-slate-400 font-medium">Puedes tocar el nombre para corregirlo</p>
+                        </div>
                     </div>
 
                     <div className="space-y-4">
@@ -201,7 +199,7 @@ export default function MedicationScanner({ onSave, onClose }) {
                             ))}
                             <button
                                 onClick={() => setIsScanning(true)}
-                                className="bg-slate-900 border-2 border-slate-800 p-8 rounded-[2rem] text-2xl font-black flex items-center justify-center gap-2 text-slate-500"
+                                className="bg-slate-800 border-2 border-slate-700 p-8 rounded-[2rem] text-2xl font-black flex items-center justify-center gap-2 text-slate-400"
                             >
                                 <RefreshCw className="w-6 h-6" /> Reintentar
                             </button>
